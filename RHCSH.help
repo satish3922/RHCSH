@@ -1,0 +1,38 @@
+___________________________
+## Block Storage Encryption
+---------------------------
+
+	STEP-I ( Making a Partition )
+	------
+	> fdisk /dev/vda        // Make a partition primary|extend
+	
+	STEP-II ( Format that partition with Luks - 'ENCYPTION' )
+	-------
+	> cryptsetup luksFormat /dev/vda4   
+	> passphrase :   // Enter any password for encryption
+	
+	STEP-III ( Open drive /dev/vd4 - 'DECRYPTION' )
+	--------
+	> cryptsetup luksOpen /dev/vd4 Adhoc   // It'll open /dev/vd4 as name of Adhoc 
+	> You can view that open drive in /dev/mapper/Adhoc  // /dev/mapper is virtual view to real HDD
+
+	STEP-IV ( Format /dev/mapper/Adhoc as normal format type eg. ext3,ext4 )
+	-------
+	> mkfs.ext4 /dev/mapper/Adhoc  // Formatting as ext4 format type
+
+	STEP-V ( Mounting /dev/mapper/Adhoc to /mnt/go )
+	------
+	> mount /dev/mapper/Adhoc /mnt/go   // any Mount point you can give
+	> After mounting you can put data here !!!
+
+	STEP-VI ( Unmount the /mnt/go )
+	-------
+	> umount /mnt/go 
+	
+	STEP-VII ( Close /dev/mapper/Adhoc )
+	--------
+	> cryptsetup luksClose Adhoc
+
+	NOTE : You can repeat step-III, step-V, step-VI, step-VII to securely putting your data :) 
+
+
