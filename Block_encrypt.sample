@@ -1,0 +1,25 @@
+   49  lsmod | grep -i dm_crypt
+   52  modprobe dm_crypt
+   53  lsmod | grep -i dm_crypt
+   54  fdisk -l
+   60  fdisk /dev/vdb
+   61  partprobe 
+   64  cryptsetup luksFormat /dev/vdb1
+   65  cryptsetup luksOpen /dev/vdb1 Adhoc
+   68  mkfs.ext4 /dev/mapper/Adhoc 
+   69  mkdir /mnt/Adhoc
+   70  mount /dev/mapper/Adhoc /mnt/Adhoc
+   72  cd /mnt/Adhoc
+   78  mkdir secure
+   79  cd secure
+   81  echo "password='ucantgetitanymore'" > Gmail
+   83  cat Gmail 
+   89  umount /mnt/Adhoc/
+   90  cryptsetup luksClose Adhoc
+  100  cryptsetup luksOpen /dev/vdb1 Adhoc
+  102  mount /dev/mapper/Adhoc /mnt/Adhoc/
+  104  cd /mnt/Adhoc/
+  106  cd secure/
+  108  cat Gmail 
+  110  umount /mnt/Adhoc/
+  115  cryptsetup luksClose Adhoc
