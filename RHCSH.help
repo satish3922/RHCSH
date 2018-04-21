@@ -36,3 +36,25 @@ ___________________________
 	NOTE : You can repeat step-III, step-V, step-VI, step-VII to securely putting your data :) 
 
 
+
+____________________________________________________
+## CONTROLLING ACCESS TO NETWORK SERVICES - IPTABLES
+----------------------------------------------------
+
+	'Allow the system to talk to itself via the loopback interface'
+	
+	root@ ~> iptables -A INPUT -i lo -j ACCEPT
+	
+	
+
+________________________________
+## CHATTR Avoid DELETION OF FILE
+--------------------------------
+
+	'You have been provided with /root/sample.txt, remove it!'
+	
+	root@ ~> chattr -i /root/sample.txt
+	root@ ~> rm -f /root/sample.txt
+
+
+
