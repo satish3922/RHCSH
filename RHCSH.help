@@ -2,59 +2,158 @@ ___________________________
 ## Block Storage Encryption
 ---------------------------
 
-	STEP-I ( Making a Partition )
+	STEP-I ( 'Making a Partition' )
 	------
-	> fdisk /dev/vda        // Make a partition primary|extend
+	root@ ~> fdisk -cu /dev/vda        // Make a partition primary|extend
+	root@ ~> partprobe
+	root@ ~> kpartx /dev/vda
+	root@ ~> lvcreate --size 1020M --name wallet treasure
 	
-	STEP-II ( Format that partition with Luks - 'ENCYPTION' )
+	>> lvm create name as /dev/treasure/wallet
+	
+	STEP-II ( 'Format that partition with Luks - 'ENCYPTION'' )
 	-------
-	> cryptsetup luksFormat /dev/vda4   
-	> passphrase :   // Enter any password for encryption
+	root@ ~> cryptsetup luksFormat /dev/treasure/wallet   
+	root@ ~> passphrase :   // Enter any password for encryption
 	
-	STEP-III ( Open drive /dev/vd4 - 'DECRYPTION' )
+	STEP-III ( 'Open drive /dev/vd4 - 'DECRYPTION'' )
 	--------
-	> cryptsetup luksOpen /dev/vd4 Adhoc   // It'll open /dev/vd4 as name of Adhoc 
-	> You can view that open drive in /dev/mapper/Adhoc  // /dev/mapper is virtual view to real HDD
+	root@ ~> cryptsetup luksOpen /dev/treasure/wallet Adhoc   // It'll open /dev/treasure/wallet as name of Adhoc 
+	>> You can view that open drive in /dev/mapper/Adhoc  // /dev/mapper is virtual view to real HDD
 
-	STEP-IV ( Format /dev/mapper/Adhoc as normal format type eg. ext3,ext4 )
+	STEP-IV ('Format /dev/mapper/Adhoc as normal format type eg.ext3,ext4')
 	-------
-	> mkfs.ext4 /dev/mapper/Adhoc  // Formatting as ext4 format type
+	root@ ~> mkfs.ext4 /dev/mapper/Adhoc  // Formatting as ext4 format type
 
-	STEP-V ( Mounting /dev/mapper/Adhoc to /mnt/go )
+	STEP-V ( 'Mounting /dev/mapper/Adhoc to /mnt/go' )
 	------
-	> mount /dev/mapper/Adhoc /mnt/go   // any Mount point you can give
-	> After mounting you can put data here !!!
+	root@ ~> mount /dev/mapper/Adhoc /mnt/go   // any Mount point you can give
+	>> After mounting you can put data here !!!
 
-	STEP-VI ( Unmount the /mnt/go )
+	STEP-VI ( 'Unmount the /mnt/go' )
 	-------
-	> umount /mnt/go 
+	root@ ~> umount /mnt/go 
 	
 	STEP-VII ( Close /dev/mapper/Adhoc )
 	--------
-	> cryptsetup luksClose Adhoc
+	root@ ~> cryptsetup luksClose Adhoc
 
-	NOTE : You can repeat step-III, step-V, step-VI, step-VII to securely putting your data :) 
+	>> You can repeat step-III, step-V, step-VI, step-VII to secure your data
+	# For Persistant Mounting ( Entry in /etc/fstab )
+	-------------------------------------------------
+	
+	STEP-I ( 'Create a file from dd command' )
+	------
+	root@ ~> dd if=/dev/urandom of=/key.txt bs=1024 count=1
 
+	STEP-II ( 'Adding key.txt to /dev/treasure/wallet' )
+	-------
+	root@ ~> cryptsetup luksAddKey /dev/treasure/wallet /key.txt
 
+	STEP-III ( 'Adding Entry in /etc/crypttab to read the password' )
+	--------
+	root@ ~> vim /etc/crypttab
+		 Adhoc /dev/treasure/wallet /key.txt
+	
+	STEP-IV ( 'Entry in fstab' )
+	-------
+	root@ ~> vim /etc/fstab
+		 /dev/treasure/wallet /mnt/go ext4 defaults 0 0
+
+	>> YOU ARE ALL DONE !!!
+	
+	
 
 ____________________________________________________
 ## CONTROLLING ACCESS TO NETWORK SERVICES - IPTABLES
 ----------------------------------------------------
 
 	'Allow the system to talk to itself via the loopback interface'
+	root@ ~> iptables -I INPUT -s localhost -j ACCEPT
 	
-	root@ ~> iptables -A INPUT -i lo -j ACCEPT
-	
-	
+	'All the services on systemX and systemY should be accessible from your own domain but should not be accessible from anywhere else with the following exceptions : ssh should be accessible on SystemX and SystemY from anywhere and http should be accessible on SystemX from anywhere' 
+	#For SystemX
+	------------
+	root@ ~> iptables -I INPUT -s 192.168.10.0/24 --dport 22 -j ACCEPT
+	root@ ~> iptables -I INPUT -s 192.168.10.0/24 --dport 80 -j ACCEPT
+	root@ ~> iptables -A INPUT -j REJECT //Appending rule With Drop message
+	root@ ~> service iptables save  //Save the iptables rules
+	root@ ~> chkconfig iptables on  //Enable iptables service
+
+	#For SystemY
+	------------
+	root@ ~> iptables -I INPUT -s 192.168.10.0/24 --dport 22 -j ACCEPT
+	root@ ~> iptables -A INPUT -j REJECT //Appending rule With Drop message
+	root@ ~> service iptables save  //Save the iptables rules
+	root@ ~> chkconfig iptables on  //Enable iptables service
+
 
 ________________________________
 ## CHATTR Avoid DELETION OF FILE
 --------------------------------
 
 	'You have been provided with /root/sample.txt, remove it!'
+	root@ ~> lsattr /root/sample.txt       //To check the Special Permission
+	root@ ~> chattr -i /root/sample.txt    //-i is used to remove Permission
+	root@ ~> rm -f /root/sample.txt  
+
+	#NOTE
+	----- 
+	[ a : Append only - prevents files from being overwritten ]
+	[ d : Do not backup with dump command ]
+	[ i : Immutable - prevents files being overwritten,deleted,or renamed ]
+	[ s : Synchronous update - file updates will immediately sync to disk ]
+	[ '+' : for adding permission ]
+	[ '-' : for removing permission ]
 	
-	root@ ~> chattr -i /root/sample.txt
-	root@ ~> rm -f /root/sample.txt
+_______________________________________________________
+## INSTALLING CENTRAL AUTHENTICATION 'IPA-SERVER-SETUP'
+-------------------------------------------------------
 
+	# SERVER SETUP
+	--------------
+	'Configure systemX as IPA-SERVER, so that idstart from 3200 to 13200'
+	'Domain is example.com and provide 'redhat123' password when required'
+	
+	root@ ~> yum install ipa-server -y 
+	root@ ~> ipa-server-install --no-ntp -n example.com -r EXAMPLE.COM -p redhat123 -a redhat123 --idstart=3200 --idmax=13200 --hostname stationX.example.com -U
+	root@ ~> kinit admin
+	
+	'Create user harry with password redhat123, uid and gid 5100, home directory as /home/remoteusers/harry'
+	
+	root@ ~> ipa user-find admin //to check or find user created or not
+	root@ ~> ipa user-add harry --first=harry --last=harry --homedir=/home/remoteusers/harry --uid=5100 --gidnumber=5100 --password
 
+	'Create user rosa with password redhat123, uid and gid 5105, home directory as /home/remoteusers/rosa'
 
+	root@ ~> ipa user-add rosa --first=rosa --last=rosa --homedir=/home/remoteusers/rosa --uid=5105 --gidnumber=5105 --password
+
+	'Create user john with password redhat123, uid and gid 5110, home directory as /home/remoteusers/john'
+	
+	root@ ~> ipa user-add john --first=john --last=john --homedir=/home/remoteusers/john --uid=5110 --gidnumber=5110 --password
+
+	
+	# CLIENT SETUP
+	--------------
+
+	'Configure SystemY as ipa client so that when user login it automatic get home directory'
+	
+	root@ ~> yum install ipa-client -y 
+	root@ ~> ipa-client-install --no-ntp --domain example.com --realm EXAMPLE.COM --server stationX.example.com -p admin -w -U 
+	
+
+_______________
+## GRUB LOCKING
+---------------
+	'Stop by being edited kernel parameters at boot time ask for password'
+	root@ ~> vim /etc/grub.conf
+		 //after menuentry type
+		 password 12335
+	
+		OR 
+	root@ ~> grub-md5-crypt //to create crypted password
+		// now paste this password in password grub file
+
+	// If you write password part after the kernel parameter , after booting it will ask pasword for opening system
+
+	
