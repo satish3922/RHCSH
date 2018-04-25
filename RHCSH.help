@@ -139,7 +139,14 @@ _______________________________________________________
 	'Configure SystemY as ipa client so that when user login it automatic get home directory'
 	
 	root@ ~> yum install ipa-client -y 
+	root@ ~> yum install ipa-admintools -y 
 	root@ ~> ipa-client-install --no-ntp --domain example.com --realm EXAMPLE.COM --server stationX.example.com -p admin -w -U 
+	root@ ~> kinit admin
+	admin@EXAMPLE.COM: redhat123
+	root@ ~> su - harry
+	harry@ ~> pwd 
+	/home/remoteusers/harry
+	
 	
 
 _______________
@@ -156,4 +163,98 @@ _______________
 
 	// If you write password part after the kernel parameter , after booting it will ask pasword for opening system
 
+	'stop running cotrol-alt-delete commands shortcut in console'
+	root@ ~> cp /etc/init/control-alt-delete.conf	/etc/init/control-alt-delete.override
+	root@ ~> vim /etc/init/control-alt-delete.override
+		 exec /bin/true // replace all line by this line
+
+
+__________________________________________________________________
+## AUDIT IN LINUX ( INSPECTION ON LINUX FILESYSTEM FOR ANY CHANGES
+------------------------------------------------------------------
+	'On systemY, monitor the file /etc/hello for any read, write and append changes and use the key as ex413key'
+	'All the rules must be persistent and immutable'
+	root@ ~> service auditd restart
+	root@ ~> chkconfig auditd on
+	root@ ~> auditctl -w /etc/hello -p rwa -k ex413key  // monitoring /etc/hello file for rwa changes with key 'ex413key'
+	root@ ~> auditctl -e 2	// making rule immutable
+
+	root@ ~> vim /etc/audit/audit.rules
+		 -w /etc/hello -p rwa -k ex413key // in last line of file
+		 -e 2   // for imutablity
+
+					
+_____________________________________
+## LOGGING SERVER SETUO USING RSYSLOG
+-------------------------------------
 	
+	# SERVER SETUP ( MAKING CA AND SERVER BOTH ON SAME MACHINE )
+	------------------------------------------------------------
+	'Configure systemX as centerlized logging server, so that client send their log in ssl/tls format'
+	root@ ~> yum install rsyslog-gnutls gnutls-utils -y 
+	root@ ~> mkdir /etc/keys
+	root@ ~> cd /etc/keys
+	root@ ~> rpm -qd rsyslog 
+	root@ ~> firefox /usr/share/doc/rsyslog/tls_cert_ca.html
+	>> then follow this doc to create CA cert & key and then SERVER cert & key
+	
+	NOTE : 	
+	------
+	COUNTRY : IN
+	ORGANISATION : ADHOC  // Name of Organisation
+	COMMUNITY : TECH  // Field you are working in 
+	LOCALITY : INDIAN
+	STATE : RAJ // For state Rajasthan
+	EMAIL : root@stationX.example.com
+
+	>> Now create server.conf in /etc/rsyslog.d/server.conf
+	root@ ~> vim server.conf
+	$ModLoad imuxsock # local messages
+	$ModLoad imtcp # TCP listener
+
+	# make gtls driver the default
+	# $DefaultNetstreamDriver gtls
+	#
+	# # certificate files
+	# $DefaultNetstreamDriverCAFile /etc/keys/ca.pem
+	# $DefaultNetstreamDriverCertFile /etc/keys/cert.pem
+	# $DefaultNetstreamDriverKeyFile /etc/keys/key.pem
+	#
+	# $InputTCPServerStreamDriverAuthMode anon
+	# $InputTCPServerStreamDriverMode 1 # run driver in TLS-only mode
+	# $InputTCPServerRun 6514 # start up listener at port 10514
+	
+	:fromhost , isequal, "stationY.example.com" /var/log/systemY.log
+	:fromhost , isequal, "stationY.example.com" ~
+
+	
+	root@ ~> service rsyslog restart
+	root@ ~> chkconfig rsyslog on
+	root@ ~> tailf /var/log/systemY.log
+	stationY.example.com : 'hello'
+
+	# CLIENT SETUP
+	--------------
+	'Configure SystemY as logging client so that it send their all logs into systemX server'
+	'SystemX manage separate log of systemY in only /var/log/systemY.log file, and no local logs should be created from now on.'
+	root@ ~> yum install rsyslog-gnutls gnutls-utils -y
+        root@ ~> mkdir /etc/keys
+        root@ ~> cd /etc/keys
+	root@ ~> scp root@stationX.example.com:/etc/keys/ca.pem /etc/keys
+	root@ ~> vim /etc/rsyslog.d/client.conf
+	# make gtls driver the default
+	# $DefaultNetstreamDriver gtls
+	#
+	# # certificate files
+	# $DefaultNetstreamDriverCAFile /etc/keys/ca.pem
+	#
+	# $ActionSendStreamDriverAuthMode anon 
+	# $ActionSendStreamDriverMode 1 # run driver in TLS-only mode
+	# *.* @@stationX.example.com:6514 # forward everything to remote server
+	
+	root@ ~> service rsyslog restart
+        root@ ~> chkconfig rsyslog on
+	root@ ~> logger "hello"
+
+
+
