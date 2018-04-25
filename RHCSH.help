@@ -256,5 +256,22 @@ _____________________________________
         root@ ~> chkconfig rsyslog on
 	root@ ~> logger "hello"
 
+________________________________________
+## PAM (Pluggable Authentication Module)
+----------------------------------------
+        'The passwords for all the new users created on systemX should be updated after 30 days'
+        root@ ~> vim /etc/login.defs     
+                 PASS_MAX_DAYS    30
+        'Set limit on the users of the group fireboy for maximum cpu time of 2 minutes'
+        'User harry can have maximum 3 logins'
+        root@ ~> vim /etc/security/limits.conf
+                 @fireboy       hard     cpu         2   
+                 harry          hard     maxlogins   3
+	#NOTE
+	-----
+	[ '@' - For Group ]
+	[ 'username' - For particular User ]
+	[ '*' - For all Users & Groups ]
+	[ '/etc/login.defs' - Conatins all info that will be implemented after useradd ]
 
 
